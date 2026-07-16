@@ -14,6 +14,9 @@ kept small, explicit and reviewable.
 | Feature or cross-cutting change | Approved spec in `docs/specs/` | Unit/integration tests, `make quality`; e2e when a user journey changes |
 | Irreversible or high-risk decision | Spec plus ADR in `docs/adr/` | Full `make ci`, manual controlled-data test, explicit release approval |
 
+An approved spec records the approver and calendar date directly below its
+status. The record is retained after delivery as the decision trail.
+
 High-risk includes external-data ingestion, LLM prompts/models and taxonomy,
 matching thresholds, e-mail delivery, personal-data handling, dependencies and
 database migrations.

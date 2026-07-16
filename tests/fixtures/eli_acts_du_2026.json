@@ -1,0 +1,22 @@
+{
+  "count": 1,
+  "items": [
+    {
+      "address": "WDU20260000946",
+      "announcementDate": "2026-07-13",
+      "changeDate": "2026-07-15T09:48:41",
+      "displayAddress": "Dz.U. 2026 poz. 946",
+      "pos": 946,
+      "promulgation": "2026-07-14",
+      "publisher": "DU",
+      "status": "obowiązujący",
+      "textHTML": false,
+      "textPDF": true,
+      "title": "Rozporządzenie Rady Ministrów z dnia 13 lipca 2026 r.",
+      "type": "Rozporządzenie",
+      "volume": 0,
+      "year": 2026,
+      "ELI": "DU/2026/946"
+    }
+  ]
+}

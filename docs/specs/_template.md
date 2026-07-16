@@ -2,6 +2,8 @@
 
 Status: draft | approved | implemented
 
+Approval: YYYY-MM-DD — <approver>; or `not required` for a trivial change
+
 ## Problem and outcome
 
 What user or operational problem is being solved? What observable outcome makes

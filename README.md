@@ -19,6 +19,18 @@ make bootstrap
 make ci
 ```
 
+To run the Phase 0 stack locally:
+
+```bash
+docker compose up --build
+curl http://localhost:8000/health
+docker compose exec app uv run python -m legal_monitor.ingest --year 2026
+```
+
+The import command is deliberately explicit in Phase 0. It imports DU and MP
+metadata for one year, writes one `job_runs` record and can be safely rerun;
+scheduling and PDF extraction arrive in later phases.
+
 `make ci` is the local equivalent of the mandatory CI gates. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the delivery workflow and
 [the plan](plans/legal-monitor-plan.md) for the product roadmap.
