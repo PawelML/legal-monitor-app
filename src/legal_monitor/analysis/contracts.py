@@ -6,7 +6,7 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from legal_monitor.analysis.taxonomy import TAGS_V1, TAXONOMY_VERSION
+from legal_monitor.analysis.taxonomy import TAGS_V1, TAXONOMY_VERSION, TaxonomyTag
 
 ANALYSIS_SCHEMA_VERSION = "v1"
 
@@ -28,7 +28,7 @@ class AnalysisOutput(BaseModel):
     summary_pl: str = Field(min_length=20, max_length=3000)
     business_relevant: bool
     affected_parties: list[str] = Field(max_length=12)
-    tags: list[str] = Field(max_length=12)
+    tags: list[TaxonomyTag] = Field(max_length=12)
     obligations: list[str] = Field(max_length=12)
     effective_from: date | None = None
     impact_level: int = Field(ge=1, le=5)

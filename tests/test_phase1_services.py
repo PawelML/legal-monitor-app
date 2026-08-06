@@ -9,7 +9,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from legal_monitor.analysis.contracts import AnalysisOutput, validate_evidence
-from legal_monitor.analysis.providers import StaticAnalysisProvider
+from legal_monitor.analysis.providers import (
+    ProviderAnalysisResult,
+    StaticAnalysisProvider,
+)
 from legal_monitor.db import Base, create_engine, create_session_factory
 from legal_monitor.extraction.eli_pdf import DownloadedPdf
 from legal_monitor.extraction.pdf import ExtractedPdfText
@@ -55,6 +58,66 @@ def test_evidence_validation_ignores_pdf_line_wrap_whitespace() -> None:
     )
 
     validate_evidence(output, ["Przepis dotyczy rozliczenia\n podatku VAT."])
+
+
+class UsageReportingProvider:
+    """Return invalid grounding with API usage to exercise failure telemetry."""
+
+    model_name = "test-usage-provider"
+
+    async def analyse(self, text: str, prompt_version: str) -> ProviderAnalysisResult:
+        del text, prompt_version
+        return ProviderAnalysisResult(
+            response_json=json.dumps(
+                {
+                    "summary_pl": "Akt wprowadza obowiązek rozliczenia podatku VAT.",
+                    "business_relevant": True,
+                    "affected_parties": ["podatnicy VAT"],
+                    "tags": ["taxes_vat"],
+                    "obligations": ["Rozliczyć podatek VAT."],
+                    "effective_from": None,
+                    "impact_level": 2,
+                    "evidence": [{"page": 1, "quote": "Nieistniejący cytat"}],
+                }
+            ),
+            input_tokens=250,
+            output_tokens=120,
+        )
+
+
+async def test_failed_analysis_records_provider_usage() -> None:
+    """Keep cost evidence when grounding blocks persistence of the analysis."""
+    engine, session_factory = await create_database()
+    try:
+        async with session_factory() as session:
+            session.add(
+                ActText(
+                    id="text3",
+                    act_eli="DU/2026/946",
+                    source_url="https://example.test/act.pdf",
+                    extractor_version="test",
+                    content_hash="d" * 64,
+                    content="Przepis dotyczy podatku VAT.",
+                    pages=["Przepis dotyczy podatku VAT."],
+                    created_at=utc_now(),
+                )
+            )
+            await session.commit()
+
+        with pytest.raises(ValueError, match="evidence quote"):
+            await ActAnalysisService(session_factory, UsageReportingProvider()).analyse(
+                "DU/2026/946", "v1"
+            )
+
+        async with session_factory() as session:
+            job = await session.scalar(
+                select(JobRun).where(JobRun.job_type == "act_analysis")
+            )
+        assert job is not None
+        assert job.parameters["input_tokens"] == 250
+        assert job.parameters["output_tokens"] == 120
+    finally:
+        await engine.dispose()
 
 
 async def create_database() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
@@ -201,9 +264,14 @@ async def test_valid_analysis_persists_versions_and_output() -> None:
 
         async with session_factory() as session:
             analysis = await session.get(ActAnalysis, result.analysis_id)
+            job = await session.scalar(
+                select(JobRun).where(JobRun.id == result.job_run_id)
+            )
         assert analysis is not None
+        assert job is not None
         assert analysis.schema_version == "v1"
         assert analysis.taxonomy_version == "v1"
         assert analysis.output["tags"] == ["taxes_vat"]
+        assert isinstance(job.parameters["latency_ms"], int)
     finally:
         await engine.dispose()

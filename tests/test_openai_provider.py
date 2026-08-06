@@ -31,6 +31,15 @@ class FakeParsedResponse:
     """SDK response substitute containing parsed structured output."""
 
     output_parsed: AnalysisOutput | None
+    usage: object | None = None
+
+
+@dataclass
+class FakeUsage:
+    """Minimal token-usage shape returned by the Responses API."""
+
+    input_tokens: int
+    output_tokens: int
 
 
 class FakeResponses:
@@ -69,7 +78,9 @@ class FakeOpenAIClient:
 
 
 async def test_openai_provider_uses_structured_output_without_storage() -> None:
-    client = FakeOpenAIClient(FakeParsedResponse(analysis_output()))
+    client = FakeOpenAIClient(
+        FakeParsedResponse(analysis_output(), FakeUsage(321, 123))
+    )
     provider = OpenAIAnalysisProvider(
         api_key="test-key",
         instructions="Return a grounded analysis.",
@@ -80,7 +91,10 @@ async def test_openai_provider_uses_structured_output_without_storage() -> None:
 
     result = await provider.analyse("Rozliczenia VAT", "pilot-v1")
 
-    assert AnalysisOutput.model_validate_json(result).tags == ["taxes_vat"]
+    assert AnalysisOutput.model_validate_json(result.response_json).tags == [
+        "taxes_vat"
+    ]
+    assert (result.input_tokens, result.output_tokens) == (321, 123)
     assert client.responses.request == {
         "model": "gpt-5.6-luna",
         "input": "Rozliczenia VAT",
@@ -103,3 +117,22 @@ async def test_openai_provider_rejects_missing_structured_output() -> None:
 
     with pytest.raises(ValueError, match="no schema-compatible"):
         await provider.analyse("Rozliczenia VAT", "pilot-v1")
+
+
+def test_analysis_schema_exposes_the_approved_tag_enumeration() -> None:
+    """Make the provider's Structured Outputs contract constrain taxonomy tags."""
+    tags_schema = AnalysisOutput.model_json_schema()["properties"]["tags"]
+    assert tags_schema["items"]["enum"] == [
+        "taxes_vat",
+        "employment",
+        "payroll",
+        "health_and_safety",
+        "data_protection",
+        "ecommerce",
+        "food",
+        "transport",
+        "construction",
+        "environment",
+        "finance_reporting",
+        "consumer_protection",
+    ]

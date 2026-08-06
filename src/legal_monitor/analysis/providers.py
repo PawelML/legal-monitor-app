@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Protocol, cast
 
 from openai import AsyncOpenAI
@@ -14,8 +15,17 @@ class AnalysisProvider(Protocol):
 
     model_name: str
 
-    async def analyse(self, text: str, prompt_version: str) -> str:
+    async def analyse(self, text: str, prompt_version: str) -> ProviderAnalysisResult:
         """Produce schema-compatible JSON without performing persistence."""
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderAnalysisResult:
+    """Validated-provider payload plus best-effort API usage telemetry."""
+
+    response_json: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
 
 
 class StaticAnalysisProvider:
@@ -26,16 +36,21 @@ class StaticAnalysisProvider:
     def __init__(self, response: str) -> None:
         self._response = response
 
-    async def analyse(self, text: str, prompt_version: str) -> str:
+    async def analyse(self, text: str, prompt_version: str) -> ProviderAnalysisResult:
         """Return the fixture response while retaining the provider contract."""
         del text, prompt_version
-        return self._response
+        return ProviderAnalysisResult(response_json=self._response)
 
 
 class ParsedAnalysisResponse(Protocol):
     """The part of an SDK parsed response required by this adapter."""
 
     output_parsed: AnalysisOutput | None
+
+    @property
+    def usage(self) -> object:
+        """Expose response usage when the provider returns it."""
+        ...
 
 
 class ResponsesParser(Protocol):
@@ -82,7 +97,7 @@ class OpenAIAnalysisProvider:
             OpenAIResponsesClient, AsyncOpenAI(api_key=api_key)
         )
 
-    async def analyse(self, text: str, prompt_version: str) -> str:
+    async def analyse(self, text: str, prompt_version: str) -> ProviderAnalysisResult:
         """Produce validated JSON without storing prompt or source text in the API."""
         response = await self._client.responses.parse(
             model=self.model_name,
@@ -99,4 +114,16 @@ class OpenAIAnalysisProvider:
         output = response.output_parsed
         if output is None:
             raise ValueError("OpenAI returned no schema-compatible analysis output")
-        return output.model_dump_json()
+        return ProviderAnalysisResult(
+            response_json=output.model_dump_json(),
+            input_tokens=_usage_count(response.usage, "input_tokens"),
+            output_tokens=_usage_count(response.usage, "output_tokens"),
+        )
+
+
+def _usage_count(usage: object, name: str) -> int | None:
+    """Extract a non-negative token count without coupling to an SDK response type."""
+    value = getattr(usage, name, None)
+    if isinstance(value, int) and value >= 0:
+        return value
+    return None

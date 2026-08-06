@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from time import perf_counter
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -14,7 +15,7 @@ from legal_monitor.analysis.contracts import (
     normalise_evidence_text,
     validate_evidence,
 )
-from legal_monitor.analysis.providers import AnalysisProvider
+from legal_monitor.analysis.providers import AnalysisProvider, ProviderAnalysisResult
 from legal_monitor.models import ActAnalysis, ActText, JobRun
 from legal_monitor.services.ingestion import utc_now
 
@@ -64,6 +65,8 @@ class ActAnalysisService:
                 )
             )
             await session.commit()
+            request_started = perf_counter()
+            provider_result: ProviderAnalysisResult | None = None
             try:
                 text = await session.scalar(
                     select(ActText)
@@ -73,10 +76,12 @@ class ActAnalysisService:
                 )
                 if text is None:
                     raise ValueError(f"no extracted text for act: {act_eli}")
-                raw_response = await self._provider.analyse(
+                provider_result = await self._provider.analyse(
                     page_marked_text(text.pages), prompt_version
                 )
-                output = AnalysisOutput.model_validate_json(raw_response)
+                output = AnalysisOutput.model_validate_json(
+                    provider_result.response_json
+                )
                 validate_evidence(output, text.pages)
                 schema_version, taxonomy_version = analysis_provenance()
                 analysis = ActAnalysis(
@@ -96,6 +101,12 @@ class ActAnalysisService:
                 job.status = "succeeded"
                 job.input_count = 1
                 job.created_count = 1
+                job.parameters = {
+                    **job.parameters,
+                    "latency_ms": round((perf_counter() - request_started) * 1000),
+                    "input_tokens": _input_tokens(provider_result),
+                    "output_tokens": _output_tokens(provider_result),
+                }
                 job.finished_at = utc_now()
                 await session.commit()
             except Exception as exc:
@@ -104,7 +115,23 @@ class ActAnalysisService:
                 assert job is not None
                 job.status = "failed"
                 job.error_summary = f"{type(exc).__name__}: {exc}"[:1000]
+                job.parameters = {
+                    **job.parameters,
+                    "latency_ms": round((perf_counter() - request_started) * 1000),
+                    "input_tokens": _input_tokens(provider_result),
+                    "output_tokens": _output_tokens(provider_result),
+                }
                 job.finished_at = utc_now()
                 await session.commit()
                 raise
         return AnalysisResult(job_id, analysis.id)
+
+
+def _input_tokens(result: ProviderAnalysisResult | None) -> int | None:
+    """Preserve API usage even when downstream schema validation rejects output."""
+    return result.input_tokens if result is not None else None
+
+
+def _output_tokens(result: ProviderAnalysisResult | None) -> int | None:
+    """Preserve API usage even when downstream schema validation rejects output."""
+    return result.output_tokens if result is not None else None
