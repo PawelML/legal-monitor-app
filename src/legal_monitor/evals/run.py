@@ -176,6 +176,12 @@ def main() -> int:
     if not labels and not predictions:
         print("Eval pending: no human-reviewed golden set has been added yet.")
         return 0
+    if labels and not predictions:
+        print(
+            "Eval pending: reviewed seed labels exist, but no complete matching "
+            "prediction set has been added yet."
+        )
+        return 0
     metrics = calculate_metrics(labels, predictions)
     baseline: Metrics | None = None
     if args.baseline.exists():

@@ -4,6 +4,9 @@ Status: approved
 
 Approval: 2026-07-16 — Pawelo
 
+Seed-label review: 2026-08-06 — Pawelo accepted 10 pilot labels. They are an
+approved seed in `evals/golden/v1/`, not the required 50-act golden baseline.
+
 ## Problem and outcome
 
 ELI metadata alone cannot tell a business what a legal act changes or whether

@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import pytest
 
+from legal_monitor.evals import run
 from legal_monitor.evals.run import GoldenLabel, Prediction, calculate_metrics
 
 
@@ -41,3 +45,19 @@ def test_metrics_reject_misaligned_or_unknown_taxonomy_records() -> None:
             [label("DU/2026/1", True, ["not_a_tag"])],
             [Prediction(act_eli="DU/2026/1", business_relevant=True, tags=[])],
         )
+
+
+def test_main_keeps_ci_green_for_reviewed_seed_without_predictions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A reviewed seed must not be misrepresented as a complete eval run."""
+    labels_path = tmp_path / "evals/golden/v1/labels.jsonl"
+    labels_path.parent.mkdir(parents=True)
+    labels_path.write_text(label("DU/2026/1", True, ["taxes_vat"]).model_dump_json())
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["run"])
+
+    assert run.main() == 0
+    assert "reviewed seed labels exist" in capsys.readouterr().out
