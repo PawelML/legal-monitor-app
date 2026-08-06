@@ -8,12 +8,13 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from legal_monitor.analysis.contracts import AnalysisOutput, validate_evidence
 from legal_monitor.analysis.providers import StaticAnalysisProvider
 from legal_monitor.db import Base, create_engine, create_session_factory
 from legal_monitor.extraction.eli_pdf import DownloadedPdf
 from legal_monitor.extraction.pdf import ExtractedPdfText
 from legal_monitor.models import Act, ActAnalysis, ActText, JobRun
-from legal_monitor.services.act_analysis import ActAnalysisService
+from legal_monitor.services.act_analysis import ActAnalysisService, page_marked_text
 from legal_monitor.services.ingestion import utc_now
 from legal_monitor.services.text_extraction import TextExtractionService
 
@@ -29,6 +30,31 @@ class StubPdfSource:
         if self.failure is not None:
             raise self.failure
         return DownloadedPdf("https://example.test/act.pdf", b"not-a-real-pdf")
+
+
+def test_page_marked_text_preserves_page_numbers() -> None:
+    """Give live providers the page evidence they need for grounded output."""
+    assert page_marked_text(["Pierwsza strona", "Druga strona"]) == (
+        "[PAGE 1]\nPierwsza strona\n\n[PAGE 2]\nDruga strona"
+    )
+
+
+def test_evidence_validation_ignores_pdf_line_wrap_whitespace() -> None:
+    """Accept a literal quotation despite insignificant PDF line wrapping."""
+    output = AnalysisOutput.model_validate(
+        {
+            "summary_pl": "Akt wprowadza obowiązek rozliczenia podatku VAT.",
+            "business_relevant": True,
+            "affected_parties": ["podatnicy VAT"],
+            "tags": ["taxes_vat"],
+            "obligations": ["Rozliczyć podatek VAT."],
+            "effective_from": None,
+            "impact_level": 2,
+            "evidence": [{"page": 1, "quote": "rozliczenia podatku VAT"}],
+        }
+    )
+
+    validate_evidence(output, ["Przepis dotyczy rozliczenia\n podatku VAT."])
 
 
 async def create_database() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:

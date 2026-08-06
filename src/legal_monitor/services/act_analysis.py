@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from legal_monitor.analysis.contracts import (
     AnalysisOutput,
     analysis_provenance,
+    normalise_evidence_text,
     validate_evidence,
 )
 from legal_monitor.analysis.providers import AnalysisProvider
@@ -24,6 +25,14 @@ class AnalysisResult:
 
     job_run_id: str
     analysis_id: str
+
+
+def page_marked_text(pages: list[str]) -> str:
+    """Preserve page provenance in the source text supplied to an analyser."""
+    return "\n\n".join(
+        f"[PAGE {page_number}]\n{normalise_evidence_text(page)}"
+        for page_number, page in enumerate(pages, 1)
+    )
 
 
 class ActAnalysisService:
@@ -65,7 +74,7 @@ class ActAnalysisService:
                 if text is None:
                     raise ValueError(f"no extracted text for act: {act_eli}")
                 raw_response = await self._provider.analyse(
-                    text.content, prompt_version
+                    page_marked_text(text.pages), prompt_version
                 )
                 output = AnalysisOutput.model_validate_json(raw_response)
                 validate_evidence(output, text.pages)

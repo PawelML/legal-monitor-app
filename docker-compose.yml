@@ -17,6 +17,8 @@ services:
 
   app:
     build: .
+    env_file:
+      - .env
     environment:
       LEGAL_MONITOR_DATABASE_URL: postgresql+asyncpg://legal_monitor:legal_monitor@db:5432/legal_monitor
     depends_on:

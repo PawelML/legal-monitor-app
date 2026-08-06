@@ -50,8 +50,16 @@ class AnalysisOutput(BaseModel):
 def validate_evidence(output: AnalysisOutput, pages: list[str]) -> None:
     """Ensure every stored quotation appears on the declared source page."""
     for item in output.evidence:
-        if item.page > len(pages) or item.quote not in pages[item.page - 1]:
+        if item.page > len(pages) or (
+            normalise_evidence_text(item.quote)
+            not in normalise_evidence_text(pages[item.page - 1])
+        ):
             raise ValueError("evidence quote is not present on its declared page")
+
+
+def normalise_evidence_text(text: str) -> str:
+    """Compare extracted PDF quotations independent of line-wrap whitespace."""
+    return " ".join(text.split())
 
 
 def analysis_provenance() -> tuple[str, str]:
