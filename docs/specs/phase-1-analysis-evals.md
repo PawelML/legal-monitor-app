@@ -7,6 +7,12 @@ Approval: 2026-07-16 — Pawelo
 Seed-label review: 2026-08-06 — Pawelo accepted 10 pilot labels. They are an
 approved seed in `evals/golden/v1/`, not the required 50-act golden baseline.
 
+Deferred baseline decision: 2026-08-06 — Pawelo approved stopping the current
+evaluation work at 20 source-reviewed acts. The remaining 30 labels and the
+first approved quality baseline remain explicit Phase 1 follow-up work; no
+model, prompt, taxonomy, threshold, matching or alert behaviour is enabled by
+the current 20-act result.
+
 ## Problem and outcome
 
 ELI metadata alone cannot tell a business what a legal act changes or whether

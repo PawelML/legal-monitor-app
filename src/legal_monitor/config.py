@@ -25,6 +25,10 @@ class Settings(BaseSettings):
         default="https://api.sejm.gov.pl/eli",
         validation_alias=AliasChoices("LEGAL_MONITOR_ELI_BASE_URL", "ELI_BASE_URL"),
     )
+    krs_base_url: str = Field(
+        default="https://api-krs.ms.gov.pl",
+        validation_alias=AliasChoices("LEGAL_MONITOR_KRS_BASE_URL", "KRS_BASE_URL"),
+    )
     openai_api_key: SecretStr | None = Field(
         default=None,
         validation_alias=AliasChoices("OPENAI_API_KEY", "LEGAL_MONITOR_OPENAI_API_KEY"),

@@ -96,3 +96,19 @@ class ActAnalysis(Base):
     model: Mapped[str] = mapped_column(String(128))
     output: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class CompanyProfile(Base):
+    """A minimal company profile sourced from the public KRS register."""
+
+    __tablename__ = "company_profiles"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    krs_number: Mapped[str] = mapped_column(String(10), unique=True, index=True)
+    name: Mapped[str] = mapped_column(Text)
+    legal_form: Mapped[str] = mapped_column(Text)
+    pkd_codes: Mapped[list[str]] = mapped_column(JSON)
+    monitoring_tags: Mapped[list[str]] = mapped_column(JSON)
+    registry_updated_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    refreshed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
