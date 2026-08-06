@@ -9,6 +9,7 @@ import httpx
 import pytest
 
 from legal_monitor.eli.client import ELIClient
+from legal_monitor.extraction.eli_pdf import ELIPdfClient
 
 
 async def test_client_parses_yearly_list_fixture() -> None:
@@ -43,3 +44,16 @@ async def test_client_rejects_incomplete_payload() -> None:
 
     with pytest.raises(ValueError):
         await client.list_acts("DU", 2026)
+
+
+async def test_pdf_client_uses_documented_act_text_url() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/eli/acts/DU/2026/946/text.pdf"
+        return httpx.Response(200, content=b"fixture-pdf")
+
+    result = await ELIPdfClient(
+        "https://api.sejm.gov.pl/eli", transport=httpx.MockTransport(handler)
+    ).download("DU", 2026, 946)
+
+    assert result.source_url.endswith("/acts/DU/2026/946/text.pdf")
+    assert result.content == b"fixture-pdf"

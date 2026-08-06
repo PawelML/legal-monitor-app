@@ -22,6 +22,8 @@ Use Python 3.12+ and `uv`.
   readiness.
 - `docker compose exec app .venv/bin/python -m legal_monitor.ingest --year 2026`
   — explicitly import DU and MP metadata for one year.
+- `docker compose exec app .venv/bin/python -m legal_monitor.extract --act-eli DU/2026/946`
+  — download and extract one official PDF after metadata has been imported.
 
 ## Coding Style & Naming Conventions
 

@@ -25,7 +25,7 @@ typecheck: ## Run strict static type checks.
 test: ## Run unit and integration tests.
 	$(UV) run pytest
 
-eval: ## Verify the evaluation-command contract (full harness arrives in Phase 1).
+eval: ## Run the offline Phase 1 evaluation harness.
 	$(UV) run python -m legal_monitor.evals.run
 
 quality: lint format-check typecheck test ## Run mandatory code-quality gates.
