@@ -64,13 +64,19 @@ async def run(
             if (
                 settings.openai_api_key is None
                 or settings.openai_analysis_instructions is None
+                or settings.openai_evidence_protocol is None
             ):
                 raise ValueError(
-                    "OPENAI_API_KEY and OPENAI_ANALYSIS_INSTRUCTIONS are required"
+                    "OPENAI_API_KEY, OPENAI_ANALYSIS_INSTRUCTIONS and "
+                    "OPENAI_ANALYSIS_EVIDENCE_PROTOCOL are required"
                 )
             provider = OpenAIAnalysisProvider(
                 api_key=settings.openai_api_key.get_secret_value(),
-                instructions=settings.openai_analysis_instructions.get_secret_value(),
+                instructions=(
+                    settings.openai_analysis_instructions.get_secret_value()
+                    + "\n\n"
+                    + settings.openai_evidence_protocol.get_secret_value()
+                ),
                 model_name=settings.openai_model,
                 reasoning_effort=settings.openai_reasoning_effort,
             )

@@ -47,6 +47,13 @@ class Settings(BaseSettings):
             "OPENAI_ANALYSIS_INSTRUCTIONS", "LEGAL_MONITOR_OPENAI_ANALYSIS_INSTRUCTIONS"
         ),
     )
+    openai_evidence_protocol: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "OPENAI_ANALYSIS_EVIDENCE_PROTOCOL",
+            "LEGAL_MONITOR_OPENAI_EVIDENCE_PROTOCOL",
+        ),
+    )
 
 
 @lru_cache

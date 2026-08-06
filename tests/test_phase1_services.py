@@ -17,7 +17,11 @@ from legal_monitor.db import Base, create_engine, create_session_factory
 from legal_monitor.extraction.eli_pdf import DownloadedPdf
 from legal_monitor.extraction.pdf import ExtractedPdfText
 from legal_monitor.models import Act, ActAnalysis, ActText, JobRun
-from legal_monitor.services.act_analysis import ActAnalysisService, page_marked_text
+from legal_monitor.services.act_analysis import (
+    ActAnalysisService,
+    chunk_marked_text,
+    source_chunks,
+)
 from legal_monitor.services.ingestion import utc_now
 from legal_monitor.services.text_extraction import TextExtractionService
 
@@ -35,10 +39,12 @@ class StubPdfSource:
         return DownloadedPdf("https://example.test/act.pdf", b"not-a-real-pdf")
 
 
-def test_page_marked_text_preserves_page_numbers() -> None:
-    """Give live providers the page evidence they need for grounded output."""
-    assert page_marked_text(["Pierwsza strona", "Druga strona"]) == (
-        "[PAGE 1]\nPierwsza strona\n\n[PAGE 2]\nDruga strona"
+def test_source_chunks_preserve_page_and_chunk_identifiers() -> None:
+    """Give live providers deterministic references instead of writable quotes."""
+    chunks = source_chunks(["Pierwsza strona", "Druga strona"], 20)
+    assert [chunk.chunk_id for chunk in chunks] == ["p1-c1", "p2-c1"]
+    assert chunk_marked_text(chunks) == (
+        "[p1-c1]\nPierwsza strona\n\n[p2-c1]\nDruga strona"
     )
 
 
@@ -77,7 +83,7 @@ class UsageReportingProvider:
                     "obligations": ["Rozliczyć podatek VAT."],
                     "effective_from": None,
                     "impact_level": 2,
-                    "evidence": [{"page": 1, "quote": "Nieistniejący cytat"}],
+                    "evidence": [{"chunk_id": "p1-c2"}],
                 }
             ),
             input_tokens=250,
@@ -104,7 +110,7 @@ async def test_failed_analysis_records_provider_usage() -> None:
             )
             await session.commit()
 
-        with pytest.raises(ValueError, match="evidence quote"):
+        with pytest.raises(ValueError, match="unknown evidence chunk"):
             await ActAnalysisService(session_factory, UsageReportingProvider()).analyse(
                 "DU/2026/946", "v1"
             )
@@ -209,12 +215,12 @@ async def test_invalid_grounding_leaves_no_analysis_and_failed_job() -> None:
                 "obligations": ["Złożyć deklarację."],
                 "effective_from": "2026-07-20",
                 "impact_level": 3,
-                "evidence": [{"page": 1, "quote": "Nieistniejący cytat"}],
+                "evidence": [{"chunk_id": "p1-c2"}],
             }
         )
         service = ActAnalysisService(session_factory, StaticAnalysisProvider(response))
 
-        with pytest.raises(ValueError, match="evidence quote"):
+        with pytest.raises(ValueError, match="unknown evidence chunk"):
             await service.analyse("DU/2026/946", "v1")
 
         async with session_factory() as session:
@@ -255,7 +261,7 @@ async def test_valid_analysis_persists_versions_and_output() -> None:
                 "obligations": ["Sprawdzić deklarację VAT."],
                 "effective_from": None,
                 "impact_level": 2,
-                "evidence": [{"page": 1, "quote": "Przepis dotyczy podatku VAT."}],
+                "evidence": [{"chunk_id": "p1-c1"}],
             }
         )
         result = await ActAnalysisService(
@@ -269,9 +275,12 @@ async def test_valid_analysis_persists_versions_and_output() -> None:
             )
         assert analysis is not None
         assert job is not None
-        assert analysis.schema_version == "v1"
+        assert analysis.schema_version == "v2"
         assert analysis.taxonomy_version == "v1"
         assert analysis.output["tags"] == ["taxes_vat"]
+        assert analysis.output["evidence"] == [
+            {"page": 1, "quote": "Przepis dotyczy podatku VAT."}
+        ]
         assert isinstance(job.parameters["latency_ms"], int)
     finally:
         await engine.dispose()

@@ -10,7 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from legal_monitor.analysis.contracts import (
+    AnalysisDraft,
     AnalysisOutput,
+    Evidence,
     analysis_provenance,
     normalise_evidence_text,
     validate_evidence,
@@ -28,11 +30,72 @@ class AnalysisResult:
     analysis_id: str
 
 
-def page_marked_text(pages: list[str]) -> str:
-    """Preserve page provenance in the source text supplied to an analyser."""
-    return "\n\n".join(
-        f"[PAGE {page_number}]\n{normalise_evidence_text(page)}"
-        for page_number, page in enumerate(pages, 1)
+@dataclass(frozen=True, slots=True)
+class SourceChunk:
+    """One deterministic, page-addressable segment of extracted source text."""
+
+    chunk_id: str
+    page: int
+    text: str
+
+
+def source_chunks(pages: list[str], maximum_characters: int = 450) -> list[SourceChunk]:
+    """Split pages on word boundaries into stable chunks suitable for citation."""
+    chunks: list[SourceChunk] = []
+    for page_number, page in enumerate(pages, 1):
+        words = normalise_evidence_text(page).split()
+        current_words: list[str] = []
+        chunk_number = 1
+        for word in words:
+            candidate = " ".join([*current_words, word])
+            if current_words and len(candidate) > maximum_characters:
+                chunks.append(
+                    SourceChunk(
+                        chunk_id=f"p{page_number}-c{chunk_number}",
+                        page=page_number,
+                        text=" ".join(current_words),
+                    )
+                )
+                chunk_number += 1
+                current_words = [word]
+            else:
+                current_words.append(word)
+        if current_words:
+            chunks.append(
+                SourceChunk(
+                    chunk_id=f"p{page_number}-c{chunk_number}",
+                    page=page_number,
+                    text=" ".join(current_words),
+                )
+            )
+    return chunks
+
+
+def chunk_marked_text(chunks: list[SourceChunk]) -> str:
+    """Render source chunks without inviting the model to reproduce quotations."""
+    return "\n\n".join(f"[{chunk.chunk_id}]\n{chunk.text}" for chunk in chunks)
+
+
+def materialise_output(
+    draft: AnalysisDraft, chunks: list[SourceChunk]
+) -> AnalysisOutput:
+    """Replace model-selected chunk IDs with exact persisted source quotations."""
+    chunks_by_id = {chunk.chunk_id: chunk for chunk in chunks}
+    evidence: list[Evidence] = []
+    for reference in draft.evidence:
+        chunk = chunks_by_id.get(reference.chunk_id)
+        if chunk is None:
+            raise ValueError(f"unknown evidence chunk reference: {reference.chunk_id}")
+        evidence.append(Evidence(page=chunk.page, quote=chunk.text))
+    return AnalysisOutput(
+        summary_pl=draft.summary_pl,
+        business_relevant=draft.business_relevant,
+        affected_parties=draft.affected_parties,
+        tags=draft.tags,
+        obligations=draft.obligations,
+        effective_from=draft.effective_from,
+        impact_level=draft.impact_level,
+        evidence=evidence,
     )
 
 
@@ -76,12 +139,12 @@ class ActAnalysisService:
                 )
                 if text is None:
                     raise ValueError(f"no extracted text for act: {act_eli}")
+                chunks = source_chunks(text.pages)
                 provider_result = await self._provider.analyse(
-                    page_marked_text(text.pages), prompt_version
+                    chunk_marked_text(chunks), prompt_version
                 )
-                output = AnalysisOutput.model_validate_json(
-                    provider_result.response_json
-                )
+                draft = AnalysisDraft.model_validate_json(provider_result.response_json)
+                output = materialise_output(draft, chunks)
                 validate_evidence(output, text.pages)
                 schema_version, taxonomy_version = analysis_provenance()
                 analysis = ActAnalysis(

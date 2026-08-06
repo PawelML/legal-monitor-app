@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from legal_monitor.analysis.taxonomy import TAGS_V1, TAXONOMY_VERSION, TaxonomyTag
 
-ANALYSIS_SCHEMA_VERSION = "v1"
+ANALYSIS_SCHEMA_VERSION = "v2"
 
 
 class Evidence(BaseModel):
@@ -20,8 +20,16 @@ class Evidence(BaseModel):
     quote: str = Field(min_length=3, max_length=500)
 
 
-class AnalysisOutput(BaseModel):
-    """The only LLM output shape accepted for persistence."""
+class EvidenceReference(BaseModel):
+    """A model-selected identifier of a deterministic source chunk."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    chunk_id: str = Field(pattern=r"^p[1-9]\d*-c[1-9]\d*$")
+
+
+class AnalysisFields(BaseModel):
+    """Fields shared by the model draft and the persisted analysis."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -32,10 +40,9 @@ class AnalysisOutput(BaseModel):
     obligations: list[str] = Field(max_length=12)
     effective_from: date | None = None
     impact_level: int = Field(ge=1, le=5)
-    evidence: list[Evidence] = Field(min_length=1, max_length=12)
 
     @model_validator(mode="after")
-    def validate_business_relevance(self) -> AnalysisOutput:
+    def validate_business_relevance(self) -> AnalysisFields:
         """Reject ungrounded taxonomy and contradictory relevance claims."""
         unknown_tags = set(self.tags).difference(TAGS_V1)
         if unknown_tags:
@@ -45,6 +52,18 @@ class AnalysisOutput(BaseModel):
         if not self.business_relevant and (self.tags or self.obligations):
             raise ValueError("non-relevant acts cannot contain tags or obligations")
         return self
+
+
+class AnalysisDraft(AnalysisFields):
+    """Structured output returned by a model under the v2 evidence protocol."""
+
+    evidence: list[EvidenceReference] = Field(min_length=1, max_length=12)
+
+
+class AnalysisOutput(AnalysisFields):
+    """Grounded analysis shape accepted for persistence."""
+
+    evidence: list[Evidence] = Field(min_length=1, max_length=12)
 
 
 def validate_evidence(output: AnalysisOutput, pages: list[str]) -> None:
