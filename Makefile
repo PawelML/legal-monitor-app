@@ -2,7 +2,7 @@
 
 UV ?= uv
 
-.PHONY: help bootstrap lint format format-check typecheck test eval quality ci
+.PHONY: help bootstrap lint format format-check typecheck test eval matching-eval quality ci
 
 help: ## Show available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ {printf "%-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -28,6 +28,9 @@ test: ## Run unit and integration tests.
 eval: ## Run the offline Phase 1 evaluation harness.
 	$(UV) run python -m legal_monitor.evals.run
 
+matching-eval: ## Run the offline Phase 2 matching evaluation harness.
+	$(UV) run python -m legal_monitor.match_evals.run
+
 quality: lint format-check typecheck test ## Run mandatory code-quality gates.
 
-ci: quality eval ## Run every CI gate locally.
+ci: quality eval matching-eval ## Run every CI gate locally.

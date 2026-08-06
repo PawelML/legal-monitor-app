@@ -1,0 +1,4 @@
+{"profile_id":"road_freight","name":"Przewoźnik drogowy","description":"Fikcyjny przewoźnik drogowy zatrudniający kierowców i używający paliw.","monitoring_tags":["employment","payroll","taxes_vat","transport"]}
+{"profile_id":"construction_contractor","name":"Wykonawca budowlany","description":"Fikcyjny wykonawca robót budowlanych zatrudniający pracowników.","monitoring_tags":["construction","employment","health_and_safety"]}
+{"profile_id":"food_producer","name":"Producent żywności","description":"Fikcyjny producent żywności pakowanej zatrudniający pracowników.","monitoring_tags":["employment","environment","food","health_and_safety"]}
+{"profile_id":"tax_advisory","name":"Firma doradztwa podatkowego","description":"Fikcyjna firma wykonująca doradztwo podatkowe i zatrudniająca pracowników.","monitoring_tags":["employment","finance_reporting","payroll","taxes_vat"]}
