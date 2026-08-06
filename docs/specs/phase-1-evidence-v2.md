@@ -39,12 +39,12 @@ materialised output. Unknown references fail the job without an analysis.
 
 ## Acceptance criteria
 
-- [ ] Model input contains stable page/chunk identifiers.
-- [ ] A valid v2 response persists only exact quotations taken from selected
+- [x] Model input contains stable page/chunk identifiers.
+- [x] A valid v2 response persists only exact quotations taken from selected
       source chunks.
-- [ ] Unknown chunk IDs leave no analysis and record a failed job.
-- [ ] The same 10-act seed produces a committed v1/v2 pilot comparison.
-- [ ] `make ci` remains offline and passes.
+- [x] Unknown chunk IDs leave no analysis and record a failed job.
+- [x] The same 10-act seed produces a committed v1/v2 pilot comparison.
+- [x] `make ci` remains offline and passes.
 
 ## Risks and human decisions
 
