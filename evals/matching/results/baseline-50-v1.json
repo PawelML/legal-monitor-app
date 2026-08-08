@@ -1,0 +1,45 @@
+{
+  "metrics": {
+    "expected_match_count": 32,
+    "precision": 0.459,
+    "predicted_match_count": 61,
+    "recall": 0.875,
+    "sample_count": 200,
+    "true_positive_count": 28
+  },
+  "per_profile": {
+    "construction_contractor": {
+      "expected_match_count": 4,
+      "precision": 0.3077,
+      "predicted_match_count": 13,
+      "recall": 1.0,
+      "sample_count": 50,
+      "true_positive_count": 4
+    },
+    "food_producer": {
+      "expected_match_count": 14,
+      "precision": 0.5882,
+      "predicted_match_count": 17,
+      "recall": 0.7143,
+      "sample_count": 50,
+      "true_positive_count": 10
+    },
+    "road_freight": {
+      "expected_match_count": 7,
+      "precision": 0.5385,
+      "predicted_match_count": 13,
+      "recall": 1.0,
+      "sample_count": 50,
+      "true_positive_count": 7
+    },
+    "tax_advisory": {
+      "expected_match_count": 7,
+      "precision": 0.3889,
+      "predicted_match_count": 18,
+      "recall": 1.0,
+      "sample_count": 50,
+      "true_positive_count": 7
+    }
+  },
+  "taxonomy_version": "v1"
+}

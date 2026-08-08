@@ -97,24 +97,44 @@ def calculate_metrics(
     """Validate the full matrix, then calculate aggregate and profile results."""
     profiles_by_id = {profile.profile_id: profile for profile in profiles}
     predictions_by_eli = {prediction.act_eli: prediction for prediction in predictions}
-    label_pairs = {(label.profile_id, label.act_eli) for label in labels}
+    explicit_labels = [label for label in labels if label.profile_id != "*"]
+    wildcard_labels = [label for label in labels if label.profile_id == "*"]
+    label_pairs = {(label.profile_id, label.act_eli) for label in explicit_labels}
     if len(profiles_by_id) != len(profiles):
         raise ValueError("matching profiles must have unique profile_id values")
     if len(predictions_by_eli) != len(predictions):
         raise ValueError("matching predictions must have unique act_eli values")
-    if len(label_pairs) != len(labels):
+    if len(label_pairs) != len(explicit_labels):
         raise ValueError("matching labels must have unique profile/act pairs")
     expected_pairs = {
         (profile.profile_id, prediction.act_eli)
         for profile in profiles
         for prediction in predictions
     }
-    if label_pairs != expected_pairs:
-        raise ValueError("matching labels must cover every profile/act pair")
-    if any(label.profile_id not in profiles_by_id for label in labels):
+    wildcard_by_act = {label.act_eli: label for label in wildcard_labels}
+    if len(wildcard_by_act) != len(wildcard_labels):
+        raise ValueError("matching wildcard labels must have unique act_eli values")
+    if any(label.expected_match for label in wildcard_labels):
+        raise ValueError("matching wildcard labels may only declare no match")
+    if any(label.profile_id not in profiles_by_id for label in explicit_labels):
         raise ValueError("matching label references an unknown profile")
+    labels_by_pair = {
+        pair: MatchLabel(
+            profile_id=pair[0],
+            act_eli=pair[1],
+            expected_match=wildcard_by_act[pair[1]].expected_match,
+            rationale=wildcard_by_act[pair[1]].rationale,
+            reviewed_by=wildcard_by_act[pair[1]].reviewed_by,
+        )
+        for pair in expected_pairs
+        if pair[1] in wildcard_by_act
+    }
+    labels_by_pair.update(
+        {(label.profile_id, label.act_eli): label for label in explicit_labels}
+    )
+    if set(labels_by_pair) != expected_pairs:
+        raise ValueError("matching labels must cover every profile/act pair")
     predicted_by_pair = predicted_matches(profiles, predictions)
-    labels_by_pair = {(label.profile_id, label.act_eli): label for label in labels}
     aggregate = _metrics_for_pairs(predicted_by_pair, labels_by_pair, expected_pairs)
     per_profile = {
         profile.profile_id: _metrics_for_pairs(

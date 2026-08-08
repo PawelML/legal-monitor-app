@@ -1,0 +1,12 @@
+{
+  "metrics": {
+    "relevance_precision": 0.7436,
+    "relevance_recall": 0.9667,
+    "sample_count": 50,
+    "tag_macro_precision": 0.4556,
+    "tag_macro_recall": 0.5758,
+    "tag_micro_precision": 0.4667,
+    "tag_micro_recall": 0.6
+  },
+  "taxonomy_version": "v1"
+}

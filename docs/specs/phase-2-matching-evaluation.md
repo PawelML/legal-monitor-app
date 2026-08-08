@@ -10,7 +10,7 @@ The matching preview has no measured quality. Before adding NIP, CEIDG,
 embeddings, thresholds or delivery, PrawoRadar needs a reproducible evaluation
 of the existing tag-intersection rule against company-specific expectations.
 
-The outcome is an offline 20-act × 4-fictional-profile matrix with reviewed
+The outcome is an offline 50-act × 4-fictional-profile matrix with reviewed
 expected matches, deterministic predictions derived from the committed v2
 analysis projections, aggregate and per-profile precision/recall, and a
 committed baseline result.
@@ -19,7 +19,7 @@ committed baseline result.
 
 - Four fictional profiles: road-freight carrier, construction contractor, food
   producer and tax-advisory firm.
-- A complete 80-pair expected-match matrix for the current approved 20-act
+- A complete 200-pair expected-match matrix for the current approved 50-act
   Phase 1 set, with concise rationales and delegated human assessment record.
 - Offline matching metrics based on the same `business_relevant` and tag
   intersection semantics as `MatchingPreviewService`.
@@ -40,13 +40,17 @@ committed baseline result.
   manually chosen taxonomy tags; no real-company or personal data is used.
 - Missing an expected match and emitting an unexpected match are both reported;
   no numerical release threshold is invented in this slice.
-- The 20-act Phase 1 set is explicitly partial. Its matching baseline is a
-  diagnostic baseline, not evidence sufficient to enable delivery.
+- The 50-act Phase 1 set is a diagnostic baseline, not evidence sufficient to
+  enable delivery.
 
 ## Design
 
 `evals/matching/v1/profiles.jsonl` supplies a profile ID and monitoring tags.
-`labels.jsonl` stores one reviewed boolean for every profile/act pair.
+`labels.jsonl` stores a reviewed boolean for every semantic profile/act pair.
+For acts expected not to match any of the fixed fictional profiles, one
+`profile_id: "*"` no-match default expands to all profiles; explicit reviewed
+profile labels override it. Positive wildcards are rejected, so every expected
+match remains explicit.
 `legal_monitor.match_evals.run` reads the existing Phase 1 projection fixture,
 predicts a match only where an analysis is business-relevant and its tags
 intersect with the profile tags, validates complete pair coverage and writes
@@ -55,7 +59,7 @@ used.
 
 ## Acceptance criteria
 
-- [x] Four fictional profiles and all 80 reviewed pair labels are committed.
+- [x] Four fictional profiles and all 200 reviewed pair labels are committed.
 - [x] The command rejects incomplete, duplicate or unknown profile/act pairs.
 - [x] Prediction semantics match `MatchingPreviewService` exactly.
 - [x] Aggregate and per-profile results are committed and documented.
@@ -68,7 +72,7 @@ used.
 - Tag overlap cannot capture company size, products, exemptions or timing.
   Poor results must lead to a separately approved design change, not hidden
   heuristics or a threshold adjustment.
-- The deferred 50-act Phase 1 baseline remains required before any automatic
+- This 50-act diagnostic baseline remains insufficient for any automatic
   delivery decision.
 
 ## Test plan
@@ -79,5 +83,5 @@ used.
 
 ## Delivery budget
 
-One 80-pair diagnostic matching baseline. Stop after recording the result;
+One 200-pair diagnostic matching baseline. Stop after recording the result;
 do not tune model output, tags or matching behaviour.

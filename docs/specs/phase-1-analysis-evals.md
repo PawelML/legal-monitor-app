@@ -4,14 +4,11 @@ Status: approved
 
 Approval: 2026-07-16 — Pawelo
 
-Seed-label review: 2026-08-06 — Pawelo accepted 10 pilot labels. They are an
-approved seed in `evals/golden/v1/`, not the required 50-act golden baseline.
-
-Deferred baseline decision: 2026-08-06 — Pawelo approved stopping the current
-evaluation work at 20 source-reviewed acts. The remaining 30 labels and the
-first approved quality baseline remain explicit Phase 1 follow-up work; no
-model, prompt, taxonomy, threshold, matching or alert behaviour is enabled by
-the current 20-act result.
+Baseline completion: 2026-08-08 — Pawelo approved the bounded source review
+and unchanged-model run. `evals/golden/v1/` now contains the required 50-act
+baseline and `evals/results/baseline-v1.json` is its reviewed metric record.
+This establishes evaluation evidence only; it does not enable changes to the
+model, prompt, taxonomy, matching, thresholds, alerts or delivery.
 
 ## Problem and outcome
 
@@ -97,9 +94,9 @@ result to `evals/results/`. The first reviewed run establishes the baseline.
       tag, invalid evidence and provider error persist no analysis and record
       failed jobs.
 - [x] The deterministic analyser makes all automated tests offline and stable.
-- [ ] Golden set v1 contains at least 50 human-reviewed labels and no source
+- [x] Golden set v1 contains at least 50 human-reviewed labels and no source
       PDF or secret.
-- [ ] `make eval` reports all stated metrics and a diff from its baseline.
+- [x] `make eval` reports all stated metrics and a diff from its baseline.
 - [ ] Before a real model becomes default, a 10-act pilot has a committed
       comparison report covering quality, failures, latency and estimated cost.
 - [ ] Any later prompt, model or taxonomy change includes an eval diff and a

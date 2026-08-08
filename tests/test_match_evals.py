@@ -65,3 +65,28 @@ def test_matching_metrics_reject_incomplete_or_duplicate_pair_matrix() -> None:
             predictions,
             [label("transport", "DU/2026/1", False)] * 2,
         )
+
+
+def test_matching_metrics_expand_a_no_match_wildcard_with_overrides() -> None:
+    """A reviewed no-match default keeps large matrices compact and complete."""
+    profiles = [profile("transport", ["transport"]), profile("food", ["food"])]
+    predictions = [
+        Prediction(act_eli="DU/2026/1", business_relevant=True, tags=["transport"])
+    ]
+    labels = [label("*", "DU/2026/1", False), label("transport", "DU/2026/1", True)]
+
+    aggregate, per_profile = calculate_metrics(profiles, predictions, labels)
+
+    assert aggregate.sample_count == 2
+    assert aggregate.precision == 1.0
+    assert aggregate.recall == 1.0
+    assert per_profile["food"].expected_match_count == 0
+
+
+def test_matching_metrics_reject_positive_wildcard() -> None:
+    """A wildcard may only state a reviewed default of no match."""
+    profiles = [profile("transport", ["transport"])]
+    predictions = [Prediction(act_eli="DU/2026/1", business_relevant=True, tags=[])]
+
+    with pytest.raises(ValueError, match="wildcard"):
+        calculate_metrics(profiles, predictions, [label("*", "DU/2026/1", True)])
